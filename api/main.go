@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	// Required for unicode.IsSpace and unicode.ToUpper
 	"gonuxt-context-assistant/api/internal/tools" // Make sure this path is correct for your module
@@ -56,8 +58,11 @@ func askHandler(w http.ResponseWriter, r *http.Request) {
 	} else if contains(query, "weather") {
 		city := extractCity(query)
 		if city != "" {
+			ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second) // Set a timeout for the request context
+			defer cancel()
+
 			log.Printf("Invoking GetWeather tool for city: %s", city)
-			weatherReport, _ := tools.GetWeather(city)
+			weatherReport, _ := tools.GetWeather(ctx, city)
 			answer = weatherReport
 		} else {
 			answer = "Please specify a city for weather information. E.g., 'What's the weather in London?'"
@@ -100,6 +105,9 @@ func askMultipleCityWeatherAsyncHandler(w http.ResponseWriter, r *http.Request) 
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 		}
 	}()
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second) // Set a timeout for the request context
+	defer cancel()
 
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
@@ -146,7 +154,7 @@ func askMultipleCityWeatherAsyncHandler(w http.ResponseWriter, r *http.Request) 
 			defer wg.Done() // Decrement the WaitGroup counter when this goroutine finishes.
 
 			log.Printf("Goroutine started for city: %s", currentCity)
-			weatherReport, found := tools.GetWeather(currentCity) // Call our tool
+			weatherReport, found := tools.GetWeather(ctx, currentCity) // Call our tool
 			log.Printf("Goroutine finished for city: %s", currentCity)
 
 			if !found {
@@ -219,10 +227,19 @@ func askMultiCityWeatherHandler(w http.ResponseWriter, r *http.Request) {
 	if len(reqBody.Query) == 0 {
 		reports["error"] = "No cities provided in the query."
 	} else {
+
+		ctx, cancel := context.WithTimeout(r.Context(), 6*time.Second) // Set a timeout for the request context
+		defer cancel()                                                 // Ensure we cancel the context to release resources
+
 		// reports["message"] = fmt.Sprintf("Processing weather for %d cities...", len(reqBody.Cities))
 		// Placeholder for loop and weather fetching
 		cities := tools.ExtractCitiesFromQuery(reqBody.Query)
-		reports = tools.GetWeatherForCities(cities)
+		reports, err = tools.GetWeatherForCities(ctx, cities)
+		if err != nil {
+			log.Printf("Error fetching weather reports: %v", err)
+			http.Error(w, "Error fetching weather reports: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// --- Prepare and Send Response ---
