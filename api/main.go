@@ -62,7 +62,7 @@ func askHandler(w http.ResponseWriter, r *http.Request) {
 			defer cancel()
 
 			log.Printf("Invoking GetWeather tool for city: %s", city)
-			weatherReport, _ := tools.GetWeather(ctx, city)
+			weatherReport, _ := tools.GetData(ctx, city, tools.GetWeather)
 			answer = weatherReport
 		} else {
 			answer = "Please specify a city for weather information. E.g., 'What's the weather in London?'"
@@ -154,10 +154,11 @@ func askMultipleCityWeatherAsyncHandler(w http.ResponseWriter, r *http.Request) 
 			defer wg.Done() // Decrement the WaitGroup counter when this goroutine finishes.
 
 			log.Printf("Goroutine started for city: %s", currentCity)
-			weatherReport, found := tools.GetWeather(ctx, currentCity) // Call our tool
+			// weatherReport, found := tools.GetWeather(ctx, currentCity) // Call our tool
+			weatherReport, err := tools.GetData(ctx, currentCity, tools.GetWeather)
 			log.Printf("Goroutine finished for city: %s", currentCity)
 
-			if !found {
+			if err != nil {
 				weatherReport = fmt.Sprintf("Weather data for %s could not be found.", currentCity)
 			}
 			// Send the result back on the channel.

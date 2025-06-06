@@ -34,27 +34,28 @@ func ExtractCitiesFromQuery(query string) []string {
 // GetWeather returns a simulated weather report for a given city.
 // This is also a public function.
 // In a real application, this would make an API call to a weather service.
-func GetWeather(ctx context.Context, city string) (string, bool) {
-	select {
-	case <-ctx.Done():
-		fmt.Printf("GetWeather for %s cancelled! Reason: %v\n", city, ctx.Err())
-		return "", false // If the context is cancelled, return an empty string and false.
-	default: // Simulate quick I/O delay
-		// Original weather logic
-		weatherData := map[string]string{
-			"lisbon":   "sunny with 28°C.",
-			"london":   "cloudy with 18°C.",
-			"new york": "partly cloudy with 22°C.",
-			"paris":    "a delightful 20°C.",
-			"tokyo":    "rainy with 15°C.", // Added for variety
-		}
-		log.Printf("GetWeather called for %s, arg: %s", city, strings.ToLower(city)) // Log the city being queried.
-		report, found := weatherData[strings.ToLower(city)]
-		if found {
-			return fmt.Sprintf("The weather in %s is currently %s", city, report), true
-		}
-		return fmt.Sprintf("No weather information found for %s.", city), false
+func GetWeather(city string) (string, bool) {
+	// select {
+	// case <-ctx.Done():
+	// 	fmt.Printf("GetWeather for %s cancelled! Reason: %v\n", city, ctx.Err())
+	// 	return "", false // If the context is cancelled, return an empty string and false.
+	// default: // Simulate quick I/O delay
+	// 	// Original weather logic
+
+	// }
+	weatherData := map[string]string{
+		"lisbon":   "sunny with 28°C.",
+		"london":   "cloudy with 18°C.",
+		"new york": "partly cloudy with 22°C.",
+		"paris":    "a delightful 20°C.",
+		"tokyo":    "rainy with 15°C.", // Added for variety
 	}
+	log.Printf("GetWeather called for %s, arg: %s", city, strings.ToLower(city)) // Log the city being queried.
+	report, found := weatherData[strings.ToLower(city)]
+	if found {
+		return fmt.Sprintf("The weather in %s is currently %s", city, report), true
+	}
+	return fmt.Sprintf("No weather information found for %s.", city), false
 
 }
 func GetWeatherForCities(ctx context.Context, cities []string) (map[string]string, error) {
@@ -64,8 +65,8 @@ func GetWeatherForCities(ctx context.Context, cities []string) (map[string]strin
 
 	for _, city := range cities {
 		// For each city in the input slice, we call GetWeather to get the weather report.
-		weatherReport, found := GetWeather(ctx, city)
-		if found {
+		weatherReport, err := GetData(ctx, city, GetWeather)
+		if err != nil {
 			reports[city] = weatherReport // Store the report in the map with the city name as the key.
 		} else {
 			reports[city] = fmt.Sprintf("Weather data for %s could not be found.", city)
@@ -152,3 +153,19 @@ func GetData(ctx context.Context, method string, arg interface{}) (interface{}, 
 	}
 }
 */
+// to better align with Go idioms and best practices, lets use the generics feature introduced in Go 1.18.
+func GetData[T any](ctx context.Context, arg T, fn func(T) (string, bool)) (string, error) {
+	// This function takes a context and a function to call with the argument of type T.
+	// It returns the result of the function call or an error if the context is cancelled.
+
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err() // If the context is cancelled, return an error.
+	default: // Simulate a delay for the operation.
+		result, found := fn(arg)
+		if found {
+			return result, nil
+		}
+		return "", fmt.Errorf("data for %v could not be found", arg)
+	}
+}
