@@ -3,11 +3,30 @@
 
 This project is structured to provide a clean and modular Go application. Below is a brief description of the key components:
 
-- **`go.mod`**: Defines the Go module and its dependencies.
-- **`main.go`**: The main entry point of the application.
-- **`internal/`**: Contains private packages that are not meant to be imported by other projects.
-  - **`tools/`**: A subpackage for utility functions.
-    - **`tools.go`**: Implements utility functions such as `GetCurrentDateTime` and `GetWeather`.
+## Project Structure
+
+```text
+gonuxt-context-assistant/
+├── cmd/                          <-- For main applications
+│   └── api/                      <-- Our HTTP API server
+│       └── main.go               <-- Entry point for the API
+├── internal/                     <-- Private application code (not importable by external projects)
+│   ├── app/                      <-- Core application logic
+│   │   └── assistant/            <-- Contains our assistant's core logic (e.g., orchestrator)
+│   │       └── assistant.go
+│   ├── api/                      <-- Internal API-specific components (e.g., handlers, routes, request/response models)
+│   │   └── handler.go
+│   │   └── models.go
+│   ├── tools/                    <-- Our helper tools (already exists)
+│   │   └── tools.go
+│   └── config/                   <-- Application configuration
+│       └── config.go
+├── pkg/                          <-- Public library code (potentially reusable by other projects)
+│   └── errors/                   <-- Custom error types (optional, but good for structured errors)
+│       └── errors.go
+├── go.mod
+├── go.sum
+```
 
 ## Usage
 

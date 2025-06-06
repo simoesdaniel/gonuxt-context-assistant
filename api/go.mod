@@ -1,4 +1,4 @@
-module gonuxt-context-assistant/api
+module gonuxt-context-assistant
 
 go 1.24.3
 
